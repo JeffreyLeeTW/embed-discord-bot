@@ -1,4 +1,4 @@
-# Discord Embed Bot
+# Embed Discord Bot
 
 Worker-only Discord app for fixing social media links into Discord-friendly
 embed URLs.

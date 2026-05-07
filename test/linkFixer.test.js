@@ -17,12 +17,12 @@ describe('linkFixer', () => {
     expect(fixedUrl).to.equal('https://fixvx.com/example/status/123');
   });
 
-  it('should convert Instagram links to ddinstagram links', () => {
+  it('should convert Instagram links to kkinstagram links', () => {
     const fixedUrl = fixEmbedUrl(
       'https://www.instagram.com/reel/ABC/?igshid=tracking',
     );
 
-    expect(fixedUrl).to.equal('https://ddinstagram.com/reel/ABC/');
+    expect(fixedUrl).to.equal('https://www.kkinstagram.com/reel/ABC/');
   });
 
   it('should convert Threads links to fixthreads.seria.moe links', () => {
@@ -39,7 +39,7 @@ describe('linkFixer', () => {
     );
 
     expect(fixedUrl).to.equal(
-      'https://facebed.com/story.php?story_fbid=123&id=456',
+      'https://www.facebed.com/story.php?story_fbid=123&id=456',
     );
   });
 
@@ -50,7 +50,7 @@ describe('linkFixer', () => {
 
     expect(fixedUrls).to.deep.equal([
       'https://fixvx.com/u/status/1',
-      'https://ddinstagram.com/p/ABC/',
+      'https://www.kkinstagram.com/p/ABC/',
     ]);
   });
 

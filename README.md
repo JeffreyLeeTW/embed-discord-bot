@@ -26,9 +26,9 @@ https://<yourworkerdomain>.workers.dev
 
 Supported replacements:
 
-- `facebook.com` / `fb.watch` -> `facebed.com`
-- `instagram.com` -> `ddinstagram.com`
-- `x.com` / `twitter.com` -> `fixvx.com`
+- `facebook.com` / `fb.watch` -> `www.facebed.com`
+- `instagram.com` -> `www.kkinstagram.com`
+- `x.com` / `twitter.com` -> `www.fixvx.com`
 - `threads.net` / `threads.com` -> `fixthreads.seria.moe`
 
 This app is intentionally Worker-only. It does not use Discord Gateway or a

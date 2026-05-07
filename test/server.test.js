@@ -96,8 +96,18 @@ describe('Server', () => {
     });
 
     it('should handle a fix slash command interaction', async () => {
+      const consoleInfoStub = sinon.stub(console, 'info');
       const interaction = {
         type: InteractionType.APPLICATION_COMMAND,
+        guild_id: 'guild-id',
+        channel_id: 'channel-id',
+        member: {
+          user: {
+            id: 'user-id',
+            username: 'example-user',
+            global_name: 'Example User',
+          },
+        },
         data: {
           name: FIX_COMMAND.name,
           options: [
@@ -110,24 +120,42 @@ describe('Server', () => {
         },
       };
 
-      const request = {
-        method: 'POST',
-        url: new URL('/', 'http://discordo.example'),
-      };
+      try {
+        const request = {
+          method: 'POST',
+          url: new URL('/', 'http://discordo.example'),
+        };
 
-      verifyDiscordRequestStub.resolves({
-        isValid: true,
-        interaction: interaction,
-      });
+        verifyDiscordRequestStub.resolves({
+          isValid: true,
+          interaction: interaction,
+        });
 
-      const response = await server.fetch(request, {});
-      const body = await response.json();
-      expect(body.type).to.equal(
-        InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      );
-      expect(body.data.content).to.equal(
-        'https://www.fixvx.com/example/status/123?lang=zh',
-      );
+        const response = await server.fetch(request, {});
+        const body = await response.json();
+        expect(body.type).to.equal(
+          InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        );
+        expect(body.data.content).to.equal(
+          'https://www.fixvx.com/example/status/123?lang=zh',
+        );
+        expect(consoleInfoStub.calledOnce).to.equal(true);
+        expect(consoleInfoStub.firstCall.args).to.deep.equal([
+          'discord_fix_command_used',
+          {
+            command: FIX_COMMAND.name,
+            userId: 'user-id',
+            username: 'example-user',
+            globalName: 'Example User',
+            guildId: 'guild-id',
+            channelId: 'channel-id',
+            fixedUrlCount: 1,
+            foundSupportedLinks: true,
+          },
+        ]);
+      } finally {
+        consoleInfoStub.restore();
+      }
     });
 
     it('should handle a fix message command interaction', async () => {
@@ -165,6 +193,7 @@ describe('Server', () => {
     });
 
     it('should return an ephemeral message when fix finds no links', async () => {
+      const consoleInfoStub = sinon.stub(console, 'info');
       const interaction = {
         type: InteractionType.APPLICATION_COMMAND,
         data: {
@@ -178,25 +207,34 @@ describe('Server', () => {
         },
       };
 
-      const request = {
-        method: 'POST',
-        url: new URL('/', 'http://discordo.example'),
-      };
+      try {
+        const request = {
+          method: 'POST',
+          url: new URL('/', 'http://discordo.example'),
+        };
 
-      verifyDiscordRequestStub.resolves({
-        isValid: true,
-        interaction: interaction,
-      });
+        verifyDiscordRequestStub.resolves({
+          isValid: true,
+          interaction: interaction,
+        });
 
-      const response = await server.fetch(request, {});
-      const body = await response.json();
-      expect(body.type).to.equal(
-        InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      );
-      expect(body.data.content).to.equal(
-        'No supported Facebook, Instagram, X/Twitter, or Threads links found.',
-      );
-      expect(body.data.flags).to.equal(InteractionResponseFlags.EPHEMERAL);
+        const response = await server.fetch(request, {});
+        const body = await response.json();
+        expect(body.type).to.equal(
+          InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        );
+        expect(body.data.content).to.equal(
+          'No supported Facebook, Instagram, X/Twitter, or Threads links found.',
+        );
+        expect(body.data.flags).to.equal(InteractionResponseFlags.EPHEMERAL);
+        expect(consoleInfoStub.calledOnce).to.equal(true);
+        expect(consoleInfoStub.firstCall.args[1].fixedUrlCount).to.equal(0);
+        expect(consoleInfoStub.firstCall.args[1].foundSupportedLinks).to.equal(
+          false,
+        );
+      } finally {
+        consoleInfoStub.restore();
+      }
     });
 
     it('should return an ephemeral message for an unknown command interaction', async () => {

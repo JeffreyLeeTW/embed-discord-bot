@@ -148,7 +148,8 @@ function getMessageCommandInput(interaction) {
 function logFixCommandUsage(interaction, fixedUrlCount) {
   const user = interaction.member?.user || interaction.user || {};
 
-  console.info('discord_fix_command_used', {
+  console.info({
+    event: 'discord_fix_command_used',
     command: FIX_COMMAND.name,
     userId: user.id || null,
     username: user.username || null,

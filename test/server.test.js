@@ -141,8 +141,8 @@ describe('Server', () => {
         );
         expect(consoleInfoStub.calledOnce).to.equal(true);
         expect(consoleInfoStub.firstCall.args).to.deep.equal([
-          'discord_fix_command_used',
           {
+            event: 'discord_fix_command_used',
             command: FIX_COMMAND.name,
             userId: 'user-id',
             username: 'example-user',
@@ -228,8 +228,8 @@ describe('Server', () => {
         );
         expect(body.data.flags).to.equal(InteractionResponseFlags.EPHEMERAL);
         expect(consoleInfoStub.calledOnce).to.equal(true);
-        expect(consoleInfoStub.firstCall.args[1].fixedUrlCount).to.equal(0);
-        expect(consoleInfoStub.firstCall.args[1].foundSupportedLinks).to.equal(
+        expect(consoleInfoStub.firstCall.args[0].fixedUrlCount).to.equal(0);
+        expect(consoleInfoStub.firstCall.args[0].foundSupportedLinks).to.equal(
           false,
         );
       } finally {

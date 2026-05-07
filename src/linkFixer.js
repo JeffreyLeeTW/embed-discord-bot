@@ -12,13 +12,13 @@ const TRACKING_PARAMS = new Set([
 ]);
 
 const HOST_REPLACEMENTS = new Map([
-  ['facebook.com', 'facebed.com'],
-  ['fb.watch', 'facebed.com'],
-  ['instagram.com', 'ddinstagram.com'],
+  ['facebook.com', 'www.facebed.com'],
+  ['fb.watch', 'www.facebed.com'],
+  ['instagram.com', 'www.kkinstagram.com'],
   ['threads.com', 'fixthreads.seria.moe'],
   ['threads.net', 'fixthreads.seria.moe'],
-  ['twitter.com', 'fixvx.com'],
-  ['x.com', 'fixvx.com'],
+  ['twitter.com', 'www.fixvx.com'],
+  ['x.com', 'www.fixvx.com'],
 ]);
 
 const URL_PATTERN = /https?:\/\/[^\s<>()]+/gi;

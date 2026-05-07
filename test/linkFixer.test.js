@@ -8,13 +8,15 @@ describe('linkFixer', () => {
       'https://x.com/example/status/123?utm_source=share&utm_medium=discord&lang=zh',
     );
 
-    expect(fixedUrl).to.equal('https://fixvx.com/example/status/123?lang=zh');
+    expect(fixedUrl).to.equal(
+      'https://www.fixvx.com/example/status/123?lang=zh',
+    );
   });
 
   it('should convert Twitter links to fixvx links', () => {
     const fixedUrl = fixEmbedUrl('https://twitter.com/example/status/123');
 
-    expect(fixedUrl).to.equal('https://fixvx.com/example/status/123');
+    expect(fixedUrl).to.equal('https://www.fixvx.com/example/status/123');
   });
 
   it('should convert Instagram links to kkinstagram links', () => {
@@ -49,7 +51,7 @@ describe('linkFixer', () => {
     );
 
     expect(fixedUrls).to.deep.equal([
-      'https://fixvx.com/u/status/1',
+      'https://www.fixvx.com/u/status/1',
       'https://www.kkinstagram.com/p/ABC/',
     ]);
   });

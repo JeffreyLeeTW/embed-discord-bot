@@ -126,7 +126,7 @@ describe('Server', () => {
         InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       );
       expect(body.data.content).to.equal(
-        'https://fixvx.com/example/status/123?lang=zh',
+        'https://www.fixvx.com/example/status/123?lang=zh',
       );
     });
 
@@ -161,9 +161,7 @@ describe('Server', () => {
       expect(body.type).to.equal(
         InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       );
-      expect(body.data.content).to.equal(
-        'https://www.kkinstagram.com/p/ABC/',
-      );
+      expect(body.data.content).to.equal('https://www.kkinstagram.com/p/ABC/');
     });
 
     it('should return an ephemeral message when fix finds no links', async () => {

@@ -3,6 +3,8 @@
 Worker-only Discord app for fixing social media links into Discord-friendly
 embed URLs.
 
+Feel free to use it.
+
 This repository is modified from Discord's
 [`cloudflare-sample-app`](https://github.com/discord/cloudflare-sample-app).
 The original project is MIT licensed, and this repository keeps the original

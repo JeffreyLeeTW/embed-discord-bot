@@ -74,10 +74,14 @@ router.post('/', async (request, env) => {
         });
       }
       case FIX_COMMAND.name.toLowerCase(): {
-        return createFixResponse(getFixCommandInput(interaction));
+        const fixedUrls = getFixedEmbedUrls(getFixCommandInput(interaction));
+        logFixCommandUsage(interaction, fixedUrls.length);
+        return createFixResponse(fixedUrls);
       }
       case FIX_MESSAGE_COMMAND.name.toLowerCase(): {
-        return createFixResponse(getMessageCommandInput(interaction));
+        return createFixResponse(
+          getFixedEmbedUrls(getMessageCommandInput(interaction)),
+        );
       }
       default:
         return createEphemeralResponse('Unknown command.');
@@ -104,9 +108,7 @@ async function verifyDiscordRequest(request, env) {
   return { interaction: JSON.parse(body), isValid: true };
 }
 
-function createFixResponse(content) {
-  const fixedUrls = getFixedEmbedUrls(content);
-
+function createFixResponse(fixedUrls) {
   if (!fixedUrls.length) {
     return createEphemeralResponse(
       'No supported Facebook, Instagram, X/Twitter, or Threads links found.',
@@ -141,6 +143,21 @@ function getFixCommandInput(interaction) {
 function getMessageCommandInput(interaction) {
   const targetId = interaction.data.target_id;
   return interaction.data.resolved?.messages?.[targetId]?.content || '';
+}
+
+function logFixCommandUsage(interaction, fixedUrlCount) {
+  const user = interaction.member?.user || interaction.user || {};
+
+  console.info('discord_fix_command_used', {
+    command: FIX_COMMAND.name,
+    userId: user.id || null,
+    username: user.username || null,
+    globalName: user.global_name || null,
+    guildId: interaction.guild_id || null,
+    channelId: interaction.channel_id || null,
+    fixedUrlCount,
+    foundSupportedLinks: fixedUrlCount > 0,
+  });
 }
 
 const server = {

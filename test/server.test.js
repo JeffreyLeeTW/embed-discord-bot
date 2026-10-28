@@ -10,6 +10,8 @@ import {
   FIX_MESSAGE_COMMAND,
   INVITE_COMMAND,
 } from '../src/commands.js';
+import { Buffer } from 'node:buffer';
+import { webcrypto } from 'node:crypto';
 import sinon from 'sinon';
 import server from '../src/server.js';
 
@@ -38,6 +40,43 @@ describe('Server', () => {
 
     afterEach(() => {
       verifyDiscordRequestStub.restore();
+    });
+
+    it('should reject requests with an invalid signature', async () => {
+      const request = {
+        method: 'POST',
+        url: new URL('/', 'http://discordo.example'),
+      };
+
+      verifyDiscordRequestStub.resolves({ isValid: false });
+
+      const response = await server.fetch(request, {});
+      expect(response.status).to.equal(401);
+      expect(await response.text()).to.equal('Bad request signature.');
+    });
+
+    it('should return a JSON 400 for an unknown interaction type', async () => {
+      const consoleErrorStub = sinon.stub(console, 'error');
+      const request = {
+        method: 'POST',
+        url: new URL('/', 'http://discordo.example'),
+      };
+
+      verifyDiscordRequestStub.resolves({
+        isValid: true,
+        interaction: { type: 999 },
+      });
+
+      try {
+        const response = await server.fetch(request, {});
+        expect(response.status).to.equal(400);
+        expect(response.headers.get('content-type')).to.equal(
+          'application/json;charset=UTF-8',
+        );
+        expect(await response.json()).to.deep.equal({ error: 'Unknown Type' });
+      } finally {
+        consoleErrorStub.restore();
+      }
     });
 
     it('should handle a PING interaction', async () => {
@@ -144,9 +183,6 @@ describe('Server', () => {
           {
             event: 'discord_fix_command_used',
             command: FIX_COMMAND.name,
-            userId: 'user-id',
-            username: 'example-user',
-            globalName: 'Example User',
             guildId: 'guild-id',
             channelId: 'channel-id',
             fixedUrlCount: 1,
@@ -262,6 +298,80 @@ describe('Server', () => {
       );
       expect(body.data.content).to.equal('Unknown command.');
       expect(body.data.flags).to.equal(InteractionResponseFlags.EPHEMERAL);
+    });
+  });
+
+  describe('verifyDiscordRequest', () => {
+    let privateKey;
+    let publicKeyHex;
+
+    beforeEach(async () => {
+      const keyPair = await webcrypto.subtle.generateKey('Ed25519', true, [
+        'sign',
+        'verify',
+      ]);
+      privateKey = keyPair.privateKey;
+      const rawPublicKey = await webcrypto.subtle.exportKey(
+        'raw',
+        keyPair.publicKey,
+      );
+      publicKeyHex = Buffer.from(rawPublicKey).toString('hex');
+    });
+
+    async function createSignedRequest(body, headers = {}) {
+      const timestamp = '1700000000';
+      const signature = await webcrypto.subtle.sign(
+        'Ed25519',
+        privateKey,
+        new TextEncoder().encode(timestamp + body),
+      );
+      return new Request('http://discordo.example/', {
+        method: 'POST',
+        body,
+        headers: {
+          'x-signature-ed25519': Buffer.from(signature).toString('hex'),
+          'x-signature-timestamp': timestamp,
+          ...headers,
+        },
+      });
+    }
+
+    it('should accept a correctly signed request', async () => {
+      const body = JSON.stringify({ type: InteractionType.PING });
+      const request = await createSignedRequest(body);
+
+      const result = await server.verifyDiscordRequest(request, {
+        DISCORD_PUBLIC_KEY: publicKeyHex,
+      });
+
+      expect(result).to.deep.equal({
+        isValid: true,
+        interaction: { type: InteractionType.PING },
+      });
+    });
+
+    it('should reject a request whose body was tampered with', async () => {
+      const request = await createSignedRequest('{"type":1}');
+      const tampered = new Request(request, { body: '{"type":2}' });
+
+      const result = await server.verifyDiscordRequest(tampered, {
+        DISCORD_PUBLIC_KEY: publicKeyHex,
+      });
+
+      expect(result).to.deep.equal({ isValid: false });
+    });
+
+    it('should reject a request without signature headers', async () => {
+      const request = new Request('http://discordo.example/', {
+        method: 'POST',
+        body: '{"type":1}',
+      });
+
+      const result = await server.verifyDiscordRequest(request, {
+        DISCORD_PUBLIC_KEY: publicKeyHex,
+      });
+
+      expect(result).to.deep.equal({ isValid: false });
     });
   });
 

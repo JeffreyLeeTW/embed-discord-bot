@@ -4,6 +4,7 @@
 
 import { AutoRouter } from 'itty-router';
 import {
+  InteractionResponseFlags,
   InteractionResponseType,
   InteractionType,
   verifyKey,
@@ -13,18 +14,16 @@ import {
   FIX_MESSAGE_COMMAND,
   INVITE_COMMAND,
 } from './commands.js';
-import { InteractionResponseFlags } from 'discord-interactions';
-import { getFixedEmbedUrls } from './linkFixer.js';
+import { getFixedEmbedUrls, SUPPORTED_PLATFORMS } from './linkFixer.js';
 
 class JsonResponse extends Response {
   constructor(body, init) {
     const jsonBody = JSON.stringify(body);
-    init = init || {
-      headers: {
-        'content-type': 'application/json;charset=UTF-8',
-      },
-    };
-    super(jsonBody, init);
+    const headers = new Headers(init?.headers);
+    if (!headers.has('content-type')) {
+      headers.set('content-type', 'application/json;charset=UTF-8');
+    }
+    super(jsonBody, { ...init, headers });
   }
 }
 
@@ -111,7 +110,7 @@ async function verifyDiscordRequest(request, env) {
 function createFixResponse(fixedUrls) {
   if (!fixedUrls.length) {
     return createEphemeralResponse(
-      'No supported Facebook, Instagram, X/Twitter, or Threads links found.',
+      `No supported ${SUPPORTED_PLATFORMS} links found.`,
     );
   }
 
@@ -146,14 +145,9 @@ function getMessageCommandInput(interaction) {
 }
 
 function logFixCommandUsage(interaction, fixedUrlCount) {
-  const user = interaction.member?.user || interaction.user || {};
-
   console.info({
     event: 'discord_fix_command_used',
     command: FIX_COMMAND.name,
-    userId: user.id || null,
-    username: user.username || null,
-    globalName: user.global_name || null,
     guildId: interaction.guild_id || null,
     channelId: interaction.channel_id || null,
     fixedUrlCount,

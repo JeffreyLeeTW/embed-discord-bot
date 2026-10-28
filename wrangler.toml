@@ -1,6 +1,6 @@
 name = "discordembedbot"
 main = "./src/server.js"
-compatibility_date="2023-05-18"
+compatibility_date = "2026-10-01"
 
 [observability]
 enabled = true

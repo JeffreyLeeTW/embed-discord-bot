@@ -14,24 +14,24 @@
     "publish": "wrangler deploy"
   },
   "keywords": [],
-  "author": "Justin Beckwith <justin.beckwith@gmail.com>",
+  "author": "JeffreyLeeTW",
   "license": "MIT",
   "dependencies": {
-    "discord-interactions": "^4.0.0",
-    "itty-router": "^5.0.9"
+    "discord-interactions": "^4.4.0",
+    "itty-router": "^5.0.24"
   },
   "devDependencies": {
-    "@eslint/js": "^9.1.1",
-    "c8": "^11.0.0",
-    "chai": "^6.2.0",
-    "dotenv": "^17.2.3",
-    "eslint": "^10.3.0",
-    "eslint-config-prettier": "^10.0.2",
-    "eslint-plugin-prettier": "^5.1.3",
-    "globals": "^17.6.0",
-    "mocha": "^11.0.0",
-    "prettier": "^3.2.5",
-    "sinon": "^21.0.0",
-    "wrangler": "^4.13.2"
+    "@eslint/js": "^10.0.1",
+    "c8": "^12.0.0",
+    "chai": "^6.3.0",
+    "dotenv": "^18.0.9",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.7",
+    "globals": "^17.13.0",
+    "mocha": "^12.0.3",
+    "prettier": "^3.9.10",
+    "sinon": "^22.1.0",
+    "wrangler": "^4.154.0"
   }
 }

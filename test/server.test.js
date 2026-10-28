@@ -11,7 +11,7 @@ import {
   INVITE_COMMAND,
 } from '../src/commands.js';
 import { Buffer } from 'node:buffer';
-import { createHash, webcrypto } from 'node:crypto';
+import { webcrypto } from 'node:crypto';
 import sinon from 'sinon';
 import server from '../src/server.js';
 
@@ -183,10 +183,6 @@ describe('Server', () => {
           {
             event: 'discord_fix_command_used',
             command: FIX_COMMAND.name,
-            userHash: createHash('sha256')
-              .update('user-id')
-              .digest('hex')
-              .slice(0, 16),
             guildId: 'guild-id',
             channelId: 'channel-id',
             fixedUrlCount: 1,

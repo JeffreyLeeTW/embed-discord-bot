@@ -74,7 +74,7 @@ router.post('/', async (request, env) => {
       }
       case FIX_COMMAND.name.toLowerCase(): {
         const fixedUrls = getFixedEmbedUrls(getFixCommandInput(interaction));
-        await logFixCommandUsage(interaction, fixedUrls.length);
+        logFixCommandUsage(interaction, fixedUrls.length);
         return createFixResponse(fixedUrls);
       }
       case FIX_MESSAGE_COMMAND.name.toLowerCase(): {
@@ -144,32 +144,15 @@ function getMessageCommandInput(interaction) {
   return interaction.data.resolved?.messages?.[targetId]?.content || '';
 }
 
-async function logFixCommandUsage(interaction, fixedUrlCount) {
-  const user = interaction.member?.user || interaction.user || {};
-
+function logFixCommandUsage(interaction, fixedUrlCount) {
   console.info({
     event: 'discord_fix_command_used',
     command: FIX_COMMAND.name,
-    userHash: user.id ? await hashUserId(user.id) : null,
     guildId: interaction.guild_id || null,
     channelId: interaction.channel_id || null,
     fixedUrlCount,
     foundSupportedLinks: fixedUrlCount > 0,
   });
-}
-
-/**
- * Log a short hash instead of the raw Discord user id, so distinct users can
- * still be counted without ids or usernames appearing in plain text.
- */
-async function hashUserId(userId) {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(userId),
-  );
-  return [...new Uint8Array(digest).slice(0, 8)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
 }
 
 const server = {

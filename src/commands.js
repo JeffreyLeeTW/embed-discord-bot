@@ -1,3 +1,5 @@
+import { SUPPORTED_PLATFORMS } from './linkFixer.js';
+
 /**
  * Share command metadata from a common spot to be used for both runtime
  * and registration.
@@ -15,7 +17,7 @@ export const FIX_COMMAND = {
     {
       type: 3,
       name: 'url',
-      description: 'A Facebook, Instagram, X/Twitter, or Threads URL.',
+      description: `A ${SUPPORTED_PLATFORMS} URL.`,
       required: true,
     },
   ],

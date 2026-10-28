@@ -11,16 +11,22 @@ const TRACKING_PARAMS = new Set([
   'wbraid',
 ]);
 
+export const SUPPORTED_PLATFORMS = 'Facebook, Instagram, X/Twitter, or Threads';
+
 const HOST_REPLACEMENTS = new Map([
   ['facebook.com', 'www.facebed.com'],
+  ['fb.com', 'www.facebed.com'],
   ['fb.watch', 'www.facebed.com'],
   ['instagram.com', 'www.kkinstagram.com'],
+  ['instagr.am', 'www.kkinstagram.com'],
   ['threads.com', 'fixthreads.seria.moe'],
   ['threads.net', 'fixthreads.seria.moe'],
   ['twitter.com', 'www.fixvx.com'],
   ['x.com', 'www.fixvx.com'],
 ]);
 
+// Mobile and alternate web subdomains, e.g. m.facebook.com or mobile.x.com.
+const HOST_PREFIX = /^(?:www|m|mobile|web)\./;
 const URL_PATTERN = /https?:\/\/[^\s<>()]+/gi;
 const TRAILING_PUNCTUATION = /[.,!?;:]+$/;
 
@@ -60,14 +66,9 @@ export function fixEmbedUrl(rawUrl) {
 }
 
 function getReplacementHost(hostname) {
-  const normalizedHost = hostname.toLowerCase().replace(/^www\./, '');
-  const withoutMobilePrefix = normalizedHost.replace(/^m\./, '');
+  const normalizedHost = hostname.toLowerCase().replace(HOST_PREFIX, '');
 
-  return (
-    HOST_REPLACEMENTS.get(normalizedHost) ||
-    HOST_REPLACEMENTS.get(withoutMobilePrefix) ||
-    null
-  );
+  return HOST_REPLACEMENTS.get(normalizedHost) || null;
 }
 
 function removeTrackingParams(url) {

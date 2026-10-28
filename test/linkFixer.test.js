@@ -45,6 +45,27 @@ describe('linkFixer', () => {
     );
   });
 
+  it('should handle mobile and alternate web subdomains', () => {
+    expect(fixEmbedUrl('https://mobile.x.com/u/status/1')).to.equal(
+      'https://www.fixvx.com/u/status/1',
+    );
+    expect(fixEmbedUrl('https://mobile.twitter.com/u/status/1')).to.equal(
+      'https://www.fixvx.com/u/status/1',
+    );
+    expect(fixEmbedUrl('https://web.facebook.com/watch/?v=123')).to.equal(
+      'https://www.facebed.com/watch/?v=123',
+    );
+  });
+
+  it('should handle Facebook and Instagram short domains', () => {
+    expect(fixEmbedUrl('https://fb.com/watch/?v=123')).to.equal(
+      'https://www.facebed.com/watch/?v=123',
+    );
+    expect(fixEmbedUrl('https://instagr.am/p/ABC/')).to.equal(
+      'https://www.kkinstagram.com/p/ABC/',
+    );
+  });
+
   it('should collect unique fixed urls from message content', () => {
     const fixedUrls = getFixedEmbedUrls(
       '看這個 https://x.com/u/status/1?utm_source=a 還有 https://instagram.com/p/ABC/. https://x.com/u/status/1?utm_source=a',

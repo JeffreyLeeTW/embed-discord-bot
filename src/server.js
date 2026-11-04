@@ -15,6 +15,16 @@ import {
   INVITE_COMMAND,
 } from './commands.js';
 import { getFixedEmbedUrls, SUPPORTED_PLATFORMS } from './linkFixer.js';
+import {
+  countComponents,
+  fetchThreadsComponent,
+  isThreadsEmbedUrl,
+} from './threadsEmbed.js';
+
+const DISCORD_API_URL = 'https://discord.com/api/v10';
+const IS_COMPONENTS_V2_FLAG = 1 << 15;
+const MAX_MESSAGE_COMPONENTS = 40;
+const NO_MENTIONS = { parse: [] };
 
 class JsonResponse extends Response {
   constructor(body, init) {
@@ -41,7 +51,7 @@ router.get('/', (request, env) => {
  * include a JSON payload described here:
  * https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object
  */
-router.post('/', async (request, env) => {
+router.post('/', async (request, env, ctx) => {
   const { isValid, interaction } = await server.verifyDiscordRequest(
     request,
     env,
@@ -75,11 +85,14 @@ router.post('/', async (request, env) => {
       case FIX_COMMAND.name.toLowerCase(): {
         const fixedUrls = getFixedEmbedUrls(getFixCommandInput(interaction));
         logFixCommandUsage(interaction, fixedUrls.length);
-        return createFixResponse(fixedUrls);
+        return createFixResponse(fixedUrls, interaction, env, ctx);
       }
       case FIX_MESSAGE_COMMAND.name.toLowerCase(): {
         return createFixResponse(
           getFixedEmbedUrls(getMessageCommandInput(interaction)),
+          interaction,
+          env,
+          ctx,
         );
       }
       default:
@@ -107,11 +120,20 @@ async function verifyDiscordRequest(request, env) {
   return { interaction: JSON.parse(body), isValid: true };
 }
 
-function createFixResponse(fixedUrls) {
+function createFixResponse(fixedUrls, interaction, env, ctx) {
   if (!fixedUrls.length) {
     return createEphemeralResponse(
       `No supported ${SUPPORTED_PLATFORMS} links found.`,
     );
+  }
+
+  // Fetching fixthreads takes about as long as Discord's 3 second response
+  // window, so defer and finish the reply in the background.
+  if (ctx && fixedUrls.some(isThreadsEmbedUrl)) {
+    ctx.waitUntil(server.sendThreadsEmbeds(fixedUrls, interaction, env));
+    return new JsonResponse({
+      type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+    });
   }
 
   return new JsonResponse({
@@ -120,6 +142,79 @@ function createFixResponse(fixedUrls) {
       content: fixedUrls.join('\n'),
     },
   });
+}
+
+/**
+ * Completes a deferred fix reply: Threads links become Components V2
+ * containers, and anything that can't (other platforms, failed fetches,
+ * overflow past the component cap) is sent as plain links.
+ */
+async function sendThreadsEmbeds(fixedUrls, interaction, env) {
+  const webhookUrl = `${DISCORD_API_URL}/webhooks/${env.DISCORD_APPLICATION_ID}/${interaction.token}`;
+  const fetchedComponents = await Promise.all(
+    fixedUrls.map((url) =>
+      isThreadsEmbedUrl(url) ? fetchThreadsComponent(url) : null,
+    ),
+  );
+
+  const containers = [];
+  const plainUrls = [];
+  let componentCount = 0;
+  fixedUrls.forEach((url, index) => {
+    const component = fetchedComponents[index];
+    const size = component ? countComponents(component) : 0;
+    if (component && componentCount + size <= MAX_MESSAGE_COMPONENTS) {
+      containers.push(component);
+      componentCount += size;
+    } else {
+      plainUrls.push(url);
+    }
+  });
+
+  try {
+    if (!containers.length) {
+      await sendWebhookMessage(`${webhookUrl}/messages/@original`, 'PATCH', {
+        content: plainUrls.join('\n'),
+        allowed_mentions: NO_MENTIONS,
+      });
+      return;
+    }
+
+    await sendWebhookMessage(`${webhookUrl}/messages/@original`, 'PATCH', {
+      flags: IS_COMPONENTS_V2_FLAG,
+      components: containers,
+      allowed_mentions: NO_MENTIONS,
+    });
+    if (plainUrls.length) {
+      // A Components V2 message can't carry content, so other links go in a
+      // follow-up where Discord can unfurl them.
+      await sendWebhookMessage(webhookUrl, 'POST', {
+        content: plainUrls.join('\n'),
+        allowed_mentions: NO_MENTIONS,
+      });
+    }
+  } catch (error) {
+    console.error({
+      event: 'threads_embed_send_failed',
+      message: error.message,
+    });
+    // Never leave the deferred reply stuck on "thinking".
+    await sendWebhookMessage(`${webhookUrl}/messages/@original`, 'PATCH', {
+      content: fixedUrls.join('\n'),
+      allowed_mentions: NO_MENTIONS,
+    }).catch(() => {});
+  }
+}
+
+async function sendWebhookMessage(url, method, body) {
+  const response = await fetch(url, {
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`Discord webhook ${method} failed: ${response.status}`);
+  }
 }
 
 function createEphemeralResponse(content) {
@@ -157,6 +252,7 @@ function logFixCommandUsage(interaction, fixedUrlCount) {
 
 const server = {
   verifyDiscordRequest,
+  sendThreadsEmbeds,
   fetch: router.fetch,
 };
 

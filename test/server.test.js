@@ -14,6 +14,7 @@ import { Buffer } from 'node:buffer';
 import { webcrypto } from 'node:crypto';
 import sinon from 'sinon';
 import server from '../src/server.js';
+import { createThreadsHtml, THREADS_COMPONENT } from './threadsFixtures.js';
 
 describe('Server', () => {
   describe('GET /', () => {
@@ -298,6 +299,149 @@ describe('Server', () => {
       );
       expect(body.data.content).to.equal('Unknown command.');
       expect(body.data.flags).to.equal(InteractionResponseFlags.EPHEMERAL);
+    });
+  });
+
+  describe('Threads embeds', () => {
+    const THREADS_URL = 'https://fixthreads.seria.moe/@a/post/B';
+    const WEBHOOK_URL =
+      'https://discord.com/api/v10/webhooks/app-id/interaction-token';
+    const env = { DISCORD_APPLICATION_ID: 'app-id' };
+    const interaction = { token: 'interaction-token' };
+    let fetchStub;
+
+    beforeEach(() => {
+      fetchStub = sinon.stub(globalThis, 'fetch');
+      fetchStub
+        .withArgs(sinon.match(/^https:\/\/discord\.com\//))
+        .resolves(new Response(null, { status: 200 }));
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    function getDiscordCalls() {
+      return fetchStub
+        .getCalls()
+        .filter((call) => call.args[0].startsWith('https://discord.com/'))
+        .map((call) => ({
+          url: call.args[0],
+          method: call.args[1].method,
+          body: JSON.parse(call.args[1].body),
+        }));
+    }
+
+    it('should defer a fix command that has a Threads link', async () => {
+      const sendStub = sinon.stub(server, 'sendThreadsEmbeds').resolves();
+      sinon.stub(console, 'info');
+      const ctx = { waitUntil: sinon.spy() };
+      sinon.stub(server, 'verifyDiscordRequest').resolves({
+        isValid: true,
+        interaction: {
+          type: InteractionType.APPLICATION_COMMAND,
+          token: 'interaction-token',
+          data: {
+            name: FIX_COMMAND.name,
+            options: [
+              { name: 'url', value: 'https://www.threads.com/@a/post/B' },
+            ],
+          },
+        },
+      });
+
+      const response = await server.fetch(
+        { method: 'POST', url: new URL('/', 'http://discordo.example') },
+        env,
+        ctx,
+      );
+      const body = await response.json();
+
+      expect(body.type).to.equal(
+        InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+      );
+      expect(ctx.waitUntil.calledOnce).to.equal(true);
+      expect(sendStub.firstCall.args[0]).to.deep.equal([THREADS_URL]);
+    });
+
+    it('should edit the reply with the Threads component', async () => {
+      fetchStub
+        .withArgs(THREADS_URL)
+        .resolves(new Response(createThreadsHtml()));
+
+      await server.sendThreadsEmbeds([THREADS_URL], interaction, env);
+
+      expect(getDiscordCalls()).to.deep.equal([
+        {
+          url: `${WEBHOOK_URL}/messages/@original`,
+          method: 'PATCH',
+          body: {
+            flags: 1 << 15,
+            components: [THREADS_COMPONENT],
+            allowed_mentions: { parse: [] },
+          },
+        },
+      ]);
+    });
+
+    it('should send other links in a follow-up message', async () => {
+      fetchStub
+        .withArgs(THREADS_URL)
+        .resolves(new Response(createThreadsHtml()));
+
+      await server.sendThreadsEmbeds(
+        [THREADS_URL, 'https://www.fixvx.com/a/status/1'],
+        interaction,
+        env,
+      );
+
+      const calls = getDiscordCalls();
+      expect(calls).to.have.length(2);
+      expect(calls[0].body.components).to.deep.equal([THREADS_COMPONENT]);
+      expect(calls[1]).to.deep.equal({
+        url: WEBHOOK_URL,
+        method: 'POST',
+        body: {
+          content: 'https://www.fixvx.com/a/status/1',
+          allowed_mentions: { parse: [] },
+        },
+      });
+    });
+
+    it('should fall back to plain links when fixthreads fails', async () => {
+      fetchStub.withArgs(THREADS_URL).resolves(new Response('<html></html>'));
+
+      await server.sendThreadsEmbeds([THREADS_URL], interaction, env);
+
+      expect(getDiscordCalls()).to.deep.equal([
+        {
+          url: `${WEBHOOK_URL}/messages/@original`,
+          method: 'PATCH',
+          body: { content: THREADS_URL, allowed_mentions: { parse: [] } },
+        },
+      ]);
+    });
+
+    it('should fall back to plain links when Discord rejects the component', async () => {
+      sinon.stub(console, 'error');
+      fetchStub
+        .withArgs(THREADS_URL)
+        .resolves(new Response(createThreadsHtml()));
+      fetchStub
+        .withArgs(`${WEBHOOK_URL}/messages/@original`)
+        .onFirstCall()
+        .resolves(new Response(null, { status: 400 }))
+        .onSecondCall()
+        .resolves(new Response(null, { status: 200 }));
+
+      await server.sendThreadsEmbeds([THREADS_URL], interaction, env);
+
+      const calls = getDiscordCalls();
+      expect(calls).to.have.length(2);
+      expect(calls[1].body).to.deep.equal({
+        content: THREADS_URL,
+        allowed_mentions: { parse: [] },
+      });
     });
   });
 
